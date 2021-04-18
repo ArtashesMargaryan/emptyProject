@@ -2,6 +2,6 @@ html,
 body {
   margin: 0;
   height: 100%;
-  overflow: hidden;
-  background: rgb(20, 25, 45);
+  /* overflow: hidden; */
+  /* background: rgb(20, 25, 45); */
 }

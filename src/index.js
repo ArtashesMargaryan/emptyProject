@@ -1,157 +1,215 @@
-console.warn('mtav');
+/**
+ * A Box2D / Planck.js demo
+ *
+ **/
+import * as PIXI from 'pixi.js';
+import * as planck from 'planck-js';
 
-(() => {
-  const config = {
-    dotMinRad: 6,
-    dotMaxRad: 20,
-    masFactor: 0.002,
-    defColor: `rgba(250,10,30,0.9)`,
-  };
-  const canvas = document.querySelector(`canvas`);
-  const ctx = canvas.getContext(`2d`);
-  let w, h, mouse, dots;
-
-  class Dot {
-    constructor() {
-      this.pos = { x: mouse.x, y: mouse.y };
-      this.vel = { x: 0, y: 0 };
-      this.rad = random(config.dotMinRad, config.dotMaxRad);
-      this.mass = this.rad * config.masFactor;
-      this.color = config.defColor;
-    }
-
-    draw() {
-      this.createCircle(this.pos.x, this.pos.y, this.rad, true, this.color);
-      this.createCircle(this.pos.x, this.pos.y, this.rad, false, config.color);
-    }
-
-    createCircle(x, y, rad, fill, color) {
-      ctx.fillStyle = ctx.strokeStyle = color;
-      ctx.beginPath();
-      ctx.arc(x, y, red, 0, Math.PI);
-      ctx.closePath();
-      fill ? ctx.fill() : ctx.stroke();
-    }
-  }
-  function random(min, max) {
-    return Math.random() * (max - min) + min;
-  }
-
-  function init() {
-    w = canvas.width = innerWidth;
-    h = canvas.height = innerHeight;
-    mouse = { x: w / 2, y: h / 2, down: false };
-    dots = [];
-  }
-
-  function loop() {
-    ctx.clearRect(0, 0, w, h);
-    if (mouse.down) {
-      dots.push(new Dot());
-    }
-    dots.map((e) => {
-      e.draw();
+class Game extends PIXI.Application {
+  constructor() {
+    super({
+      width: 640,
+      height: 640,
+      backgroundColor: 0xaa99aa,
+      autoResize: true,
+      resolution: window.devicePixelRatio,
+      antialias: true,
     });
-    window.requestAnimationFrame(loop);
+    document.body.appendChild(this.view);
+    this.globalScale = 30;
+    this.stage.interactive = true;
+    this.stage.hitArea = this.screen;
+    this.planck = planck;
+    this.boundaries = [];
+
+    this.bouildBoard();
+    this.init();
+
+    this.board;
   }
 
-  init();
-  loop();
+  init() {
+    this.stage.scale.x = 1;
+    this.stage.scale.y = 1;
+    this.config = {
+      radius: 0.3,
+    };
+    this.ballFixtureDef = {};
+    this.ballFixtureDef.density = 10.0;
+    this.ballFixtureDef.position = this.planck.Vec2(0.0, 0.0);
 
-  function setPos({ layerX, layerY }) {
-    [mouse.x, mouse.y] = [layerX, layerY];
+    this.world = this.planck.World(this.planck.Vec2(0, 9.8), true);
+    this.addBoundaries();
+
+    setInterval(() => {
+      this.addBall();
+    }, 500);
+
+    this.addBall();
+
+    /*for(let i = 0;i<120;++i){
+  addBall();
+  }*/
+
+    this.ticker.add(() => {
+      this.play();
+    });
   }
 
-  function isDown() {
-    mouse.down = !mouse.down;
+  play() {
+    this.world.step(1 / 60, this.ticker.elapsedMS / 1000);
+    this.updateWorld();
   }
 
-  canvas.addEventListener(`mousemove`, setPos);
-  canvas.addEventListener(`mousedown`, isDown);
-  canvas.addEventListener(`mouseup`, isDown);
-})();
-// class Main {
-//   constructor() {
-//     this.canvas = document.querySelector(`canvas`);
-//     this.context = canvas.getContext(`2d`);
-//     this.width, this.height;
-//     this.mouse;
-//     this.dots = [];
-//     this.canvas.addEventListener('mousemove', this.setPos);
-//     this.canvas.addEventListener('mousedown', this.isDown, this);
-//     this.canvas.addEventListener('mouseup', this.isDown, this);
-//     this.buildConfig();
-//     this.init();
-//     this.loop();
-//   }
+  getPlanckSize(value) {
+    return value * this.globalScale;
+  }
 
-//   init() {
-//     this.dots = [];
-//     this.width = canvas.width = innerWidth;
-//     this.height = canvas.height = innerHeight;
-//     this.mouse = { x: this.width / 2, y: this.height / 2, down: false };
-//   }
+  getGameSize(value) {
+    return value / this.globalScale;
+  }
 
-//   buildConfig() {
-//     this.config = {
-//       dotMinRed: 6,
-//       dotMaxRed: 20,
-//       massGravity: 0.002,
-//       color: 'rgba(250,10,10,0.8)',
-//     };
-//   }
+  bouildBoard() {
+    this.board = new PIXI.Container();
+    this.stage.addChild(this.board);
+  }
 
-//   buildCell() {
-//     const cell = new Cell(this);
-//     return cell;
-//   }
+  bouildBall() {
+    const ballCanvas = document.createElement('canvas');
+    ballCanvas.width = this.getPlanckSize(this.config.radius) * 2;
+    ballCanvas.height = this.getPlanckSize(this.config.radius) * 2;
+    this.ballCanvas = ballCanvas;
+    const ctx = ballCanvas.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(
+      this.getPlanckSize(this.config.radius),
+      this.getPlanckSize(this.config.radius),
+      this.getPlanckSize(this.config.radius),
+      0,
+      Math.PI * 2
+    );
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    return ballCanvas;
+  }
 
-//   setPos({ pointerX, pointerY }) {
-//     (this.mouse.x = pointerX), (this.mouse.y = pointerY);
-//   }
+  addCircle(x, y) {
+    // const sprite = PIXI.Sprite.from('/assets/ball.png');
+    const sprite = PIXI.Sprite.from(this.bouildBall());
 
-//   loop() {
-//     this.context.clearRect(0, 0, this.width, this.height);
-//     if (this.mouse.down) {
-//       this.dots.push(this.buildCell());
-//     }
-//     this.dots.map((cell) => cell.draw());
-//     window.requestAnimationFrame(this.loop);
-//   }
+    sprite.anchor.set(0.5);
+    sprite.position.set(x, y);
+    return sprite;
+  }
 
-//   isDown() {
-//     this.mouse.down = !this.mouse.down;
-//   }
-// }
+  addEdge(body, w, angle) {
+    const { x, y } = body.getPosition();
+    console.warn(x, y);
+    const g = new PIXI.Graphics();
+    g.beginFill(0xffffff, 1);
+    g.lineStyle(0);
+    g.drawRect(0, 0, w, 2);
+    g.endFill();
 
-// class Cell {
-//   constructor(context) {
-//     this.context = context;
-//     this.pos = { x: context.mouse.x, y: context.mouse.y };
-//     this.vel = { x: 0, y: 0 };
-//     this.radius = random(context.config.dotMinRed, context.config.dotMaxRed);
-//     this.mass = this.radius * context.config.massGravity;
-//     this.color = context.config.color;
-//   }
+    const t = this.renderer.generateTexture(g);
+    const boundary = PIXI.Sprite.from(t);
+    boundary.anchor.set(0.5);
+    boundary.position.set(this.getPlanckSize(x), this.getPlanckSize(y));
+    boundary.rotation = angle;
+    boundary.body = body;
+    return boundary;
+  }
 
-//   draw() {
-//     this.createCircle(this.pos.x, this.pos.y, this.radius, true, this.color);
-//     this.createCircle(this.pos.x, this.pos.y, this.radius, false, this.color);
-//   }
+  addBall() {
+    const body = this.world.createBody().setDynamic();
+    body.setPosition(this.planck.Vec2(4, 0));
+    /*const fd = {};
+      fd.density = 10.0;
+      fd.position = Vec2(0.0, 0.0);*/
+    body.createFixture(this.planck.Circle(this.config.radius), this.ballFixtureDef);
 
-//   createCircle(x, y, radius, fill, color) {
-//     const ctx = this.context.context;
-//     ctx.fillStyle = ctx.strokeStyle = color;
-//     ctx.beginPath();
-//     ctx.arc(x, y, red, 0, 2 * Math.PI);
-//     ctx.closePath();
-//     fill ? ctx.fill() : ctx.stroke();
-//   }
-// }
+    const pos = body.getPosition();
+    const circle = this.addCircle(pos.x, pos.y);
+    circle.body = body;
 
-// function random(min, max) {
-//   return Math.random() * (max - min) + min;
-// }
+    this.board.addChild(circle);
+  }
 
-// console.warn('hasa');
-// const game = new Main();
+  addBoundaries() {
+    const boundaryBottom = this.world.createBody();
+    let width = this.getGameSize(this.stage.width);
+    let height = this.getGameSize(this.stage.height);
+    boundaryBottom.createFixture(
+      this.planck.Edge(this.planck.Vec2(-width / 2, 0.0), this.planck.Vec2(width / 2, 0.0)),
+      0.0
+    );
+    boundaryBottom.setPosition(this.planck.Vec2(width / 2.0, height));
+    const bottom = this.addEdge(boundaryBottom, this.stage.width, 0);
+
+    this.boundaries.push(bottom);
+
+    const boundaryMid = this.world.createBody();
+    let x = 5;
+    let y = 8;
+    let edgeWidth = 10;
+    boundaryMid.createFixture(
+      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
+      0.0
+    );
+    boundaryMid.setPosition(this.planck.Vec2(x, y));
+    boundaryMid.setAngle(0.2);
+    const mid = this.addEdge(boundaryMid, this.getPlanckSize(edgeWidth), 0.2);
+    this.boundaries.push(mid);
+
+    let x2 = x + 14;
+    let y2 = y + 9;
+    const boundaryMid2 = this.world.createBody();
+    boundaryMid2.createFixture(
+      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
+      0.0
+    );
+    boundaryMid2.setPosition(this.planck.Vec2(x2, y2));
+    boundaryMid2.setAngle(-0.2);
+    const mid2 = this.addEdge(boundaryMid2, this.getPlanckSize(edgeWidth), -0.2);
+    this.boundaries.push(mid2);
+
+    edgeWidth = height;
+    const boundaryleft = this.world.createBody();
+    boundaryleft.createFixture(
+      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
+      0.0
+    );
+    boundaryleft.setPosition(this.planck.Vec2(0, height / 2));
+    boundaryleft.setAngle(1.5708);
+    const left = this.addEdge(boundaryleft, this.getPlanckSize(edgeWidth), 1.5708);
+    this.boundaries.push(left);
+
+    const boundaryright = this.world.createBody();
+    boundaryright.createFixture(
+      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
+      0.0
+    );
+    boundaryright.setPosition(this.planck.Vec2(width, height / 2));
+    boundaryright.setAngle(1.5708);
+    const right = this.addEdge(boundaryright, this.getPlanckSize(edgeWidth), 1.5708);
+    this.boundaries.push(right);
+
+    this.boundaries.forEach((child) => this.stage.addChild(child));
+  }
+
+  updateWorld() {
+    for (let i = 0; i < this.board.children.length; i++) {
+      const sprite = this.board.children[i];
+      const pos = sprite.body.getPosition();
+      /*if (pos.x < -10 || pos.x > global.width + 10) {
+          group.removeChild(sprite);
+          boundaries.splice(boundaries.indexOf(sprite.body), 1);
+          i--;
+        } else*/
+      sprite.position.set(this.getPlanckSize(pos.x), this.getPlanckSize(pos.y));
+    }
+  }
+}
+
+new Game();
