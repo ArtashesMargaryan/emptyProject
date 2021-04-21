@@ -1,215 +1,311 @@
-/**
- * A Box2D / Planck.js demo
- *
- **/
-import * as PIXI from 'pixi.js';
-import * as planck from 'planck-js';
+import * as Matter from 'matter-js';
 
-class Game extends PIXI.Application {
+export class Game {
   constructor() {
-    super({
-      width: 640,
-      height: 640,
-      backgroundColor: 0xaa99aa,
-      autoResize: true,
-      resolution: window.devicePixelRatio,
-      antialias: true,
-    });
+    this.view = document.createElement('div');
     document.body.appendChild(this.view);
-    this.globalScale = 30;
-    this.stage.interactive = true;
-    this.stage.hitArea = this.screen;
-    this.planck = planck;
-    this.boundaries = [];
-
-    this.bouildBoard();
+    this.view.style.backgroundColor = 'red';
+    this.view.setAttribute('id', 'board1');
+    this.view.style.width = 100;
+    this.view.style.height = 100;
+    this.mouseConstraint = Matter.MouseConstraint;
+    this.mouse = Matter.Mouse;
     this.init();
-
-    this.board;
+    this.runRender();
+    this.buildWord();
+    this.build();
+    this.ball;
   }
 
   init() {
-    this.stage.scale.x = 1;
-    this.stage.scale.y = 1;
     this.config = {
-      radius: 0.3,
+      world: {
+        AX: 500,
+        AY: 10,
+
+        BX: 1000,
+        BY: 20,
+        CX: 1000,
+        CY: 510,
+        DX: 500,
+        DY: 520,
+      },
+      colors: {
+        WINDOW: '#f8f9fa',
+        BAR: '#868e96',
+        DOT: '#f8f9fa',
+        HEADER: '#868e96',
+        TEXT: '#ced4da',
+        SOCIAL: '#f06595',
+        IMAGE: '#22b8cf',
+      },
+      defElement: [
+        {
+          x: 600,
+          y: 40,
+          r: 35,
+        },
+        {
+          x: 700,
+          y: 100,
+          r: 35,
+        },
+        {
+          x: 750,
+          y: 140,
+          r: 35,
+        },
+      ],
     };
-    this.ballFixtureDef = {};
-    this.ballFixtureDef.density = 10.0;
-    this.ballFixtureDef.position = this.planck.Vec2(0.0, 0.0);
+    this.engine = Matter.Engine.create(this.view);
+    this.world = this.engine.world;
+  }
 
-    this.world = this.planck.World(this.planck.Vec2(0, 9.8), true);
-    this.addBoundaries();
+  runRender() {
+    this.render = Matter.Render.create({
+      element: document.body,
+      engine: this.engine,
 
-    setInterval(() => {
-      this.addBall();
-    }, 500);
+      options: {
+        width: 2000,
+        height: 2000,
 
-    this.addBall();
+        wireframes: false, // need this or various render styles won't take
+        background: 0xffffff,
+        showAngleIndicato: true,
+      },
+    });
+    Matter.Render.lookAt(this.render, {
+      min: { x: 0, y: 0 },
+      max: { x: 2000, y: 2000 },
+    });
+    Matter.Render.run(this.render);
+    this.runner();
+  }
 
-    /*for(let i = 0;i<120;++i){
-  addBall();
-  }*/
+  addBB() {
+    const body = Matter.Bodies.polygon(150, 200, 5, 30);
 
-    this.ticker.add(() => {
+    const constraint = Matter.Constraint.create({
+      pointA: { x: 150, y: 100 },
+      bodyB: body,
+      pointB: { x: -10, y: -10 },
+    });
+
+    Matter.Composite.add(this.world, [body, constraint]);
+  }
+
+  runner() {
+    this.runner = Matter.Runner.create();
+    Matter.Runner.run(this.runner, this.engine);
+  }
+
+  wall(x, y, width, height) {
+    return Matter.Bodies.rectangle(x, y, width, height, {
+      isStatic: true,
+      render: { visible: true, color: '#f8f9fa' },
+    });
+  }
+
+  buildWord() {
+    Matter.Composite.add(this.engine.world, [
+      // boundaries (top, bottom, left, right)
+      this.wall(700, 120, 1000, 20),
+      this.wall(700, 620, 1000, 20),
+      this.wall(200, 370, 30, 520),
+      this.wall(1200, 370, 30, 520),
+      this.wall(700, 820, 1000, 20),
+      this.wall(700, 1220, 1000, 20),
+      this.wall(200, 1020, 30, 420),
+      this.wall(1200, 1020, 30, 420),
+    ]);
+
+    // bodies
+  }
+
+  build() {
+    this.createCircle();
+    Matter.World.add(this.engine.world, this.circles);
+  }
+
+  createCircle() {
+    this.circles = [];
+    this.circles.push(this.circl(300, 200, 40, '#aaddaa'));
+    this.circles.push(this.circl(900, 1000, 40, '#44ddaa'));
+    console.warn(this.circles[0]);
+    setTimeout(() => {
+      this.setCirecle();
       this.play();
+    }, 2000);
+  }
+
+  setCirecle() {
+    this.circles.forEach((circle) => {
+      Matter.Body.setStatic(circle, false);
+      Matter.Body.setVelocity(circle, {
+        x: this.getRandom(-4, 4),
+        y: this.getRandom(-6, -4),
+      });
+      Matter.Body.setAngularVelocity(circle, this.getRandom(-0.05, 0.05));
+    });
+  }
+
+  getRandom(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  circl(x, y, radius, color) {
+    return Matter.Bodies.circle(x, y, radius, {
+      isStatic: false,
+      restitution: 1,
+      render: { fillStyle: color },
     });
   }
 
   play() {
-    this.world.step(1 / 60, this.ticker.elapsedMS / 1000);
-    this.updateWorld();
-  }
+    const mouse = Matter.Mouse.create(this.render.canvas),
+      mouseConstraint = Matter.MouseConstraint.create(this.engine, {
+        mouse: mouse,
+        constraint: {
+          stiffness: 0.2,
+          render: {
+            visible: false,
+          },
+        },
+      });
 
-  getPlanckSize(value) {
-    return value * this.globalScale;
-  }
-
-  getGameSize(value) {
-    return value / this.globalScale;
-  }
-
-  bouildBoard() {
-    this.board = new PIXI.Container();
-    this.stage.addChild(this.board);
-  }
-
-  bouildBall() {
-    const ballCanvas = document.createElement('canvas');
-    ballCanvas.width = this.getPlanckSize(this.config.radius) * 2;
-    ballCanvas.height = this.getPlanckSize(this.config.radius) * 2;
-    this.ballCanvas = ballCanvas;
-    const ctx = ballCanvas.getContext('2d');
-    ctx.beginPath();
-    ctx.arc(
-      this.getPlanckSize(this.config.radius),
-      this.getPlanckSize(this.config.radius),
-      this.getPlanckSize(this.config.radius),
-      0,
-      Math.PI * 2
-    );
-    ctx.strokeStyle = '#ff0000';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    return ballCanvas;
-  }
-
-  addCircle(x, y) {
-    // const sprite = PIXI.Sprite.from('/assets/ball.png');
-    const sprite = PIXI.Sprite.from(this.bouildBall());
-
-    sprite.anchor.set(0.5);
-    sprite.position.set(x, y);
-    return sprite;
-  }
-
-  addEdge(body, w, angle) {
-    const { x, y } = body.getPosition();
-    console.warn(x, y);
-    const g = new PIXI.Graphics();
-    g.beginFill(0xffffff, 1);
-    g.lineStyle(0);
-    g.drawRect(0, 0, w, 2);
-    g.endFill();
-
-    const t = this.renderer.generateTexture(g);
-    const boundary = PIXI.Sprite.from(t);
-    boundary.anchor.set(0.5);
-    boundary.position.set(this.getPlanckSize(x), this.getPlanckSize(y));
-    boundary.rotation = angle;
-    boundary.body = body;
-    return boundary;
-  }
-
-  addBall() {
-    const body = this.world.createBody().setDynamic();
-    body.setPosition(this.planck.Vec2(4, 0));
-    /*const fd = {};
-      fd.density = 10.0;
-      fd.position = Vec2(0.0, 0.0);*/
-    body.createFixture(this.planck.Circle(this.config.radius), this.ballFixtureDef);
-
-    const pos = body.getPosition();
-    const circle = this.addCircle(pos.x, pos.y);
-    circle.body = body;
-
-    this.board.addChild(circle);
-  }
-
-  addBoundaries() {
-    const boundaryBottom = this.world.createBody();
-    let width = this.getGameSize(this.stage.width);
-    let height = this.getGameSize(this.stage.height);
-    boundaryBottom.createFixture(
-      this.planck.Edge(this.planck.Vec2(-width / 2, 0.0), this.planck.Vec2(width / 2, 0.0)),
-      0.0
-    );
-    boundaryBottom.setPosition(this.planck.Vec2(width / 2.0, height));
-    const bottom = this.addEdge(boundaryBottom, this.stage.width, 0);
-
-    this.boundaries.push(bottom);
-
-    const boundaryMid = this.world.createBody();
-    let x = 5;
-    let y = 8;
-    let edgeWidth = 10;
-    boundaryMid.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryMid.setPosition(this.planck.Vec2(x, y));
-    boundaryMid.setAngle(0.2);
-    const mid = this.addEdge(boundaryMid, this.getPlanckSize(edgeWidth), 0.2);
-    this.boundaries.push(mid);
-
-    let x2 = x + 14;
-    let y2 = y + 9;
-    const boundaryMid2 = this.world.createBody();
-    boundaryMid2.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryMid2.setPosition(this.planck.Vec2(x2, y2));
-    boundaryMid2.setAngle(-0.2);
-    const mid2 = this.addEdge(boundaryMid2, this.getPlanckSize(edgeWidth), -0.2);
-    this.boundaries.push(mid2);
-
-    edgeWidth = height;
-    const boundaryleft = this.world.createBody();
-    boundaryleft.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryleft.setPosition(this.planck.Vec2(0, height / 2));
-    boundaryleft.setAngle(1.5708);
-    const left = this.addEdge(boundaryleft, this.getPlanckSize(edgeWidth), 1.5708);
-    this.boundaries.push(left);
-
-    const boundaryright = this.world.createBody();
-    boundaryright.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryright.setPosition(this.planck.Vec2(width, height / 2));
-    boundaryright.setAngle(1.5708);
-    const right = this.addEdge(boundaryright, this.getPlanckSize(edgeWidth), 1.5708);
-    this.boundaries.push(right);
-
-    this.boundaries.forEach((child) => this.stage.addChild(child));
-  }
-
-  updateWorld() {
-    for (let i = 0; i < this.board.children.length; i++) {
-      const sprite = this.board.children[i];
-      const pos = sprite.body.getPosition();
-      /*if (pos.x < -10 || pos.x > global.width + 10) {
-          group.removeChild(sprite);
-          boundaries.splice(boundaries.indexOf(sprite.body), 1);
-          i--;
-        } else*/
-      sprite.position.set(this.getPlanckSize(pos.x), this.getPlanckSize(pos.y));
-    }
+    Matter.Composite.add(this.world, mouseConstraint);
+    this.render.mouse = mouse;
   }
 }
+
+// (() => {
+//   const MouseConstraint = Matter.MouseConstraint;
+//   const Mouse = Matter.Mouse;
+
+//   // constants
+//   const COLOR = {
+//     WINDOW: '#f8f9fa',
+//     BAR: '#868e96',
+//     DOT: '#f8f9fa',
+//     HEADER: '#868e96',
+//     TEXT: '#ced4da',
+//     SOCIAL: '#f06595',
+//     IMAGE: '#22b8cf',
+//   };
+
+//   // variables
+//   let canvas, elements;
+
+//   function init() {
+//     // engine
+//     let engine = Matter.Engine.create();
+//     engine.world.gravity.y = 0;
+
+//     // render
+//     let render = Matter.Render.create({
+//       element: document.getElementById('container'),
+//       engine: engine,
+//       options: {
+//         width: 1500,
+//         height: 900,
+//         wireframes: false, // need this or various render styles won't take
+//         background: 0xffffff,
+//       },
+//     });
+//     Matter.Render.run(render);
+
+//     // runner
+//     let runner = Matter.Runner.create();
+//     Matter.Runner.run(runner, engine);
+
+//     // fixed bodies
+//     Matter.World.add(engine.world, [
+//       // boundaries (top, bottom, left, right)
+//       wall(400, 30, 800, 20),
+//       wall(400, 610, 800, 20),
+//       wall(30, 300, 20, 600),
+//       wall(810, 300, 20, 600),
+//     ]);
+//     // bodies to toss around
+//     elements = [
+//       // header icon
+//       // circ(80, 120, 40, COLOR.IMAGE),
+
+//       // circ(740, 100, 20, COLOR.SOCIAL),
+//       // circ(740, 150, 20, COLOR.SOCIAL),
+//       circ(740, 200, 20, COLOR.SOCIAL),
+//     ];
+
+//     Matter.World.add(engine.world, elements);
+
+//     canvas = document.createElement('canvas');
+//     // run();
+
+//     const mouse = Mouse.create(render.canvas),
+//       mouseConstraint = MouseConstraint.create(engine, {
+//         mouse: mouse,
+//         constraint: {
+//           stiffness: 0.2,
+//           render: {
+//             visible: false,
+//           },
+//         },
+//       });
+//     render.mouse = mouse;
+//     Matter.World.add(engine.world, mouseConstraint);
+//   }
+
+//   function run() {
+//     canvas.classList.add('slam');
+//     setTimeout(slam, 2000);
+//   }
+
+//   function slam() {
+//     // let the bodies hit the floor
+//     elements.forEach((body) => {
+//       Matter.Body.setStatic(body, false);
+//       Matter.Body.setVelocity(body, {
+//         x: rand(-4, 4),
+//         y: rand(-6, -4),
+//       });
+//       Matter.Body.setAngularVelocity(body, rand(-0.05, 0.05));
+//     });
+
+//     // repeat
+//     //   canvas.classList.remove('slam');
+//     //   setTimeout(run, 5000);
+//   }
+
+//   // matter.js has a built in random range function, but it is deterministic
+//   function rand(min, max) {
+//     return Math.random() * (max - min) + min;
+//   }
+
+//   function wall(x, y, width, height) {
+//     return Matter.Bodies.rectangle(x, y, width, height, {
+//       isStatic: true,
+//       render: { visible: true },
+//     });
+//   }
+
+//   function rect(x, y, width, height, color) {
+//     return Matter.Bodies.rectangle(x, y, width, height, {
+//       isStatic: true,
+//       restitution: 1,
+//       render: { fillStyle: color },
+//     });
+//   }
+
+//   function circ(x, y, radius, color) {
+//     return Matter.Bodies.circle(x, y, radius, {
+//       isStatic: true,
+//       restitution: 1,
+//       render: { fillStyle: color },
+//     });
+//   }
+
+//   window.addEventListener('load', init, false);
+// })();
 
 new Game();

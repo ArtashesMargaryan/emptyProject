@@ -1,260 +1,108 @@
-const pscale = 30;
-
-function mpx(m) {
-  return m * pscale;
-}
-
-function pxm(p) {
-  return p / pscale;
-}
-
 import * as PIXI from 'pixi.js';
-import * as Planck from 'planck-js';
+import * as planck from 'planck-js';
 
-export class ArtBooble extends PIXI.Application {
+class Game extends PIXI.Application {
   constructor() {
     super({
-      width: 850,
-      height: 650,
-      backgroundColor: 'rgb(120,100,100)',
+      width: 640,
+      height: 640,
+      backgroundColor: 0xaa99aa,
+      autoResize: true,
+      resolution: window.devicePixelRatio,
+      antialias: true,
     });
     document.body.appendChild(this.view);
+    this.globalScale = 30;
+    this.stage.interactive = true;
+    this.stage.hitArea = this.screen;
+    this.planck = planck;
     this.boundaries = [];
-    console.warn(Planck);
-    this.planck = Planck;
-    this.config = {
-      spiners: [
-        { x: 400, y: 800, w: 150, h: 20, angl: Math.PI / 4, pivotX: 0.4, pivotY: 0.65 },
-        { x: 700, y: 800, w: 150, h: 20, angl: Math.PI / 4, pivotX: 1, pivotY: 0.65 },
-        { x: 700, y: 550, w: 150, h: 20, angl: Math.PI / 4, pivotX: 0.4, pivotY: 0.65 },
-        { x: 300, y: 650, w: 150, h: 20, angl: Math.PI / 4, pivotX: 0.4, pivotY: 0.65 },
-        { x: 190, y: 450, w: 150, h: 20, angl: Math.PI / 4, pivotX: 0.93, pivotY: 0.65 },
-        { x: 600, y: 490, w: 150, h: 20, angl: Math.PI / 4, pivotX: 1.1, pivotY: 0.65 },
-        { x: 600, y: 250, w: 150, h: 20, angl: Math.PI / 4, pivotX: 0.6, pivotY: 0.65 },
-      ],
 
-      gravity: Planck.Vec2(0.0, -10.0),
-    };
-    this.world = this.planck.World(this.planck.Vec2(0, 9.8), true);
-    this.buildBoard();
-    this.buildBalls();
-    this.addBall();
+    this.bouildBoard();
+    this.init();
 
-    this.addBoundaries();
-
-    setTimeout(() => {
-      this.play();
-    }, 1000);
-    this.ticker.add(() => {
-      this.addBall();
-    }, this);
+    this.board;
   }
 
-  buildBoard() {
-    this.container = new PIXI.Container();
-    this.stage.addChild(this.container);
+  init() {
+    this.stage.scale.x = 1;
+    this.stage.scale.y = 1;
+    this.config = {
+      radius: 0.65,
+    };
+    this.ballFixtureDef = {};
+    this.ballFixtureDef.density = 10.0;
+    this.ballFixtureDef.position = this.planck.Vec2(0.0, 0.0);
 
-    this.buildWorld();
-    this.config.spiners.forEach((spiner) => {
-      this.buildSpiner(spiner.x, spiner.y, spiner.w, spiner.h, spiner.angl, spiner.pivotX, spiner.pivotY);
+    this.world = this.planck.World(this.planck.Vec2(0, 9.8), true);
+    this.addBoundaries();
+
+    const setInt = setInterval(() => {
+      this.addBall();
+    }, 500);
+
+    this.addBall();
+
+    /*for(let i = 0;i<120;++i){
+  addBall();
+  }*/
+
+    setTimeout(() => {
+      clearInterval(setInt);
+    }, 400);
+
+    this.ticker.add(() => {
+      this.play();
     });
   }
 
-  buildBalls() {
-    const radius = 0.9; //meters!
-    const ballCanvas = document.createElement('canvas');
-    ballCanvas.width = 100;
-    ballCanvas.height = 100;
+  play() {
+    this.world.step(1 / 60, this.ticker.elapsedMS / 1000);
+    this.updateWorld();
+  }
 
+  getPlanckSize(value) {
+    return value * this.globalScale;
+  }
+
+  getGameSize(value) {
+    return value / this.globalScale;
+  }
+
+  bouildBoard() {
+    this.board = new PIXI.Container();
+    this.stage.addChild(this.board);
+  }
+
+  bouildBall() {
+    const ballCanvas = document.createElement('canvas');
+    ballCanvas.width = this.getPlanckSize(this.config.radius) * 2;
+    ballCanvas.height = this.getPlanckSize(this.config.radius) * 2;
+    this.ballCanvas = ballCanvas;
     const ctx = ballCanvas.getContext('2d');
     ctx.beginPath();
-    ctx.arc(mpx(radius), mpx(radius), mpx(radius), 0, Math.PI * 2);
-    ctx.strokeStyle = '#FFFFFF';
+    ctx.arc(
+      this.getPlanckSize(this.config.radius),
+      this.getPlanckSize(this.config.radius),
+      this.getPlanckSize(this.config.radius),
+      0,
+      Math.PI * 2
+    );
+    ctx.strokeStyle = '#ff0000';
     ctx.lineWidth = 1;
     ctx.stroke();
-
-    const ballFixtureDef = {};
-    ballFixtureDef.density = 10.0;
-    ballFixtureDef.position = this.planck.Vec2(0.0, 0.0);
-
-    this.ballFixtureDef = ballFixtureDef;
+    return ballCanvas;
   }
 
-  buildBall(pos) {
-    const ball = new PIXI.Container();
-    // if (!this.ball || this.ball.children.length === 0) {
-    const gr = new PIXI.Graphics();
-    gr.beginFill(0xdd1122);
-    gr.drawCircle(60, 70, 30);
-    ball.addChild(gr);
-    // }
-    ball.position.set(pos.x, pos.y);
+  addCircle(x, y) {
+    const sprite = PIXI.Sprite.from('/assets/ball1.png');
+    // const sprite = PIXI.Sprite.from(this.bouildBall());
 
-    const t = this.renderer.generateTexture(gr);
-    // const t = this.app.renderer.generateTexture(g);
-    const boundary = PIXI.Sprite.from(t);
-    boundary.anchor.set(0.5);
-    return boundary;
-  }
+    sprite.anchor.set(0.5);
+    sprite.position.set(x, y);
+    // sprite.rotation = angle;
 
-  updateWorld() {
-    for (let i = 1; i < this.board.children.length; i++) {
-      const sprite = this.board.children[i];
-      if (!sprite.children[0]) {
-        console.warn(1);
-        continue;
-      }
-      const pos = { x: sprite.children[0].position.x, y: sprite.children[0].position.y };
-      /*if (pos.x < -10 || pos.x > global.width + 10) {
-           group.removeChild(sprite);
-           boundaries.splice(boundaries.indexOf(sprite.body), 1);
-           i--;
-         } else*/
-      sprite.position.set(pos.x, pos.y);
-    }
-  }
-
-  addBall() {
-    //////////////*********** */
-    const ballFixtureDef = this.ballFixtureDef;
-    const body = this.planck.World().createBody().setDynamic();
-    body.setPosition(this.planck.Vec2(50, 0));
-    /*const fd = {};
-   fd.density = 10.0;
-   fd.position = Vec2(0.0, 0.0);*/
-    body.createFixture(this.planck.Circle(0.9), ballFixtureDef);
-
-    const pos = body.getPosition();
-    if (this.board.children.length < 10) {
-      const circle = this.buildBall(pos);
-
-      circle.anchor.set(0.5);
-      circle.position.set(body.getPosition().x, body.getPosition().y);
-      this.board.addChild((this.ball = circle));
-      circle.body = body;
-    }
-  }
-
-  buildWorld() {
-    const board = new PIXI.Container();
-
-    const gr = new PIXI.Graphics();
-    gr.lineStyle(2, 0xffffff, 1);
-    gr.beginFill(0x2d3b30);
-    gr.drawRect(0, 0, 840, 600);
-    gr.endFill();
-    // board.addChild(gr);
-    this.container.addChild((this.board = board));
-    //////************************ */
-
-    const world = this.planck.World(this.planck.Vec2(0, 9.8), true);
-    const boundaryBottom = world.createBody();
-
-    boundaryBottom.createFixture(
-      this.planck.Edge(this.planck.Vec2(this.board.x, 0.0), this.planck.Vec2(this.board.x + this.board.width, 0.0)),
-      0.0
-    );
-    boundaryBottom.setPosition(this.planck.Vec2(this.board.x, this.board.y + this.board.height));
-    const bottom = this.addEdge(boundaryBottom, this.board.width, 0);
-    this.boundaries.push(bottom);
-    /////*********** */
-
-    // const boundaryTop = world.createBody();
-    // boundaryTop.createFixture(
-    //   this.planck.Edge(this.planck.Vec2(this.board.x, 0.0), this.planck.Vec2(this.board.x + this.board.width, 0.0)),
-    //   0.0
-    // );
-    // boundaryTop.setPosition(this.planck.Vec2(this.board.x, this.board.position.y));
-    // const top = this.addEdge(boundaryTop, this.board.width, 0);
-
-    // this.boundaries.push(top);
-  }
-
-  buildSpiner(x, y, w, h, angl, pivotX, pivotY) {
-    const container = new PIXI.Container();
-    const gr = new PIXI.Graphics();
-    gr.lineStyle(1, 0xffffff, 1);
-    gr.beginFill(0xff0303);
-    gr.drawRect(x * Math.sin(angl), y * Math.cos(angl), w, h);
-    // gr.pivot.set(pivotX, pivotY);
-    gr.endFill();
-    container.addChild(gr);
-
-    const gr1 = new PIXI.Graphics();
-    gr1.lineStyle(1, 0xffffff, 1);
-
-    gr1.beginFill(0x2d3b30);
-    gr1.drawCircle((x + pivotX * w) * Math.sin(angl), (y + pivotY * h) * Math.cos(angl), Math.min(w / 2, h / 2));
-    gr1.endFill();
-    container.addChild(gr1);
-    container.pivot.set(container.width / 2, container.height / 2);
-    const t = this.renderer.generateTexture(container);
-    // container.rotation = 0.7;
-
-    this.board.addChild(container);
-  }
-
-  addBoundaries() {
-    return;
-    const world = this.planck.World(this.planck.Vec2(0, 9.8), true);
-    const boundaryBottom = world.createBody();
-    let width = pxm(global.gameWidth);
-    let height = pxm(global.gameHeight);
-    boundaryBottom.createFixture(
-      this.planck.Edge(this.planck.Vec2(-width / 2, 0.0), this.planck.Vec2(width / 2, 0.0)),
-      0.0
-    );
-    boundaryBottom.setPosition(this.planck.Vec2(width / 2.0, height));
-    const bottom = this.addEdge(boundaryBottom, global.gameWidth, 0);
-
-    this.boundaries.push(bottom);
-
-    const boundaryMid = world.createBody();
-    let x = 5;
-    let y = 8;
-    let edgeWidth = 10;
-    boundaryMid.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryMid.setPosition(this.planck.Vec2(x, y));
-    boundaryMid.setAngle(0.2);
-    const mid = this.addEdge(boundaryMid, mpx(edgeWidth), 0.2);
-    this.boundaries.push(mid);
-
-    let x2 = x + 14;
-    let y2 = y + 9;
-    const boundaryMid2 = world.createBody();
-    boundaryMid2.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryMid2.setPosition(this.planck.Vec2(x2, y2));
-    boundaryMid2.setAngle(-0.2);
-    const mid2 = this.addEdge(boundaryMid2, mpx(edgeWidth), -0.2);
-    this.boundaries.push(mid2);
-
-    edgeWidth = height;
-    const boundaryleft = world.createBody();
-    boundaryleft.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryleft.setPosition(this.planck.Vec2(0, height / 2));
-    boundaryleft.setAngle(1.5708);
-    const left = this.addEdge(boundaryleft, mpx(edgeWidth), 1.5708);
-    this.boundaries.push(left);
-    const boundaryright = world.createBody();
-    boundaryright.createFixture(
-      this.planck.Edge(this.planck.Vec2(-edgeWidth / 2, 0.0), this.planck.Vec2(edgeWidth / 2, 0.0)),
-      0.0
-    );
-    boundaryright.setPosition(this.planck.Vec2(width, height / 2));
-    boundaryright.setAngle(-1.5708);
-    const right = this.addEdge(boundaryright, mpx(edgeWidth), 1.5708);
-    this.boundaries.push(right);
-
-    this.boundaries.forEach((child) => this.stage.addChild(child));
+    return sprite;
   }
 
   addEdge(body, w, angle) {
@@ -266,19 +114,112 @@ export class ArtBooble extends PIXI.Application {
     g.endFill();
 
     const t = this.renderer.generateTexture(g);
-    // const t = this.app.renderer.generateTexture(g);
     const boundary = PIXI.Sprite.from(t);
     boundary.anchor.set(0.5);
-    boundary.position.set(mpx(x), mpx(y));
+    boundary.position.set(this.getPlanckSize(x), this.getPlanckSize(y));
     boundary.rotation = angle;
     boundary.body = body;
     return boundary;
   }
 
-  play() {
-    // console.warn(this.ball.body);
-    // this.world.step(1 / 60, this.app.ticker.elapsedMS / 1000);
-    this.world.step(1 / 60, this.ticker.elapsedMS / 1000);
-    this.updateWorld();
+  addBall() {
+    const body = this.world.createBody().setDynamic();
+    console.warn(body.m_angularVelocity);
+
+    body.setPosition(this.planck.Vec2(4, 0));
+    /*const fd = {};
+      fd.density = 10.0;
+      fd.position = Vec2(0.0, 0.0);*/
+    body.createFixture(this.planck.Circle(this.config.radius), this.ballFixtureDef);
+
+    const pos = body.getPosition();
+    const circle = this.addCircle(pos.x, pos.y);
+    circle.body = body;
+    circle.name = 'circle';
+    this.board.addChild(circle);
+  }
+
+  addBoundaries() {
+    // const boundaryBottom = this.world.createBody();
+    // let width = this.getGameSize(this.board.width);
+    // let height = this.getGameSize(this.board.height);
+    // boundaryBottom.createFixture(this.planck.Edge(this.planck.Vec2(0.0, 0.0), this.planck.Vec2(width, 0.0)), 0.0);
+    // boundaryBottom.setPosition(this.planck.Vec2(width / 2.0, 8));
+    // const bottom = this.addEdge(boundaryBottom, this.board.width, 0);
+
+    // this.boundaries.push(bottom);
+
+    const boundaryBottom = this.world
+      .createBody({
+        gravityScale: 10,
+        linearDamping: 10,
+        angularDamping: 0.1,
+      })
+      .setStatic();
+    let x = 20;
+    let y = 20;
+    let edgeWidth = 25;
+    boundaryBottom.createFixture(
+      this.planck.Edge(this.planck.Vec2(-edgeWidth, 0.0), this.planck.Vec2(edgeWidth, 0.0)),
+      0.0
+    );
+    boundaryBottom.setPosition(this.planck.Vec2(x / 2, y));
+    boundaryBottom.setAngle(0);
+
+    const mid = this.addEdge(boundaryBottom, this.getPlanckSize(edgeWidth), 0);
+    this.boundaries.push(mid);
+
+    ////left
+
+    const boundaryLeft = this.world.createBody().setStatic();
+    let xLeft = 0;
+    let yLeft = 11.4;
+    let edgeWidthLeft = 17;
+    boundaryLeft.createFixture(
+      this.planck.Edge(this.planck.Vec2(-edgeWidthLeft, yLeft), this.planck.Vec2(edgeWidthLeft, yLeft)),
+      0.0
+    );
+    boundaryLeft.setPosition(this.planck.Vec2(xLeft + 1, yLeft));
+    boundaryLeft.setAngle(0);
+
+    const midLeft = this.addEdge(boundaryLeft, this.getPlanckSize(edgeWidthLeft), Math.PI / 2);
+    this.boundaries.push(midLeft);
+
+    ///rigth
+    const boundaryRight = this.world.createBody();
+    let xRight = 3;
+    let yRight = 11.4;
+    let edgeWidthRight = 17;
+    boundaryRight.createFixture(
+      this.planck.Edge(this.planck.Vec2(-edgeWidthRight, yRight), this.planck.Vec2(edgeWidthRight, yRight)),
+      0.0
+    );
+    boundaryRight.setPosition(this.planck.Vec2(xRight + edgeWidthRight, yRight));
+    boundaryRight.setAngle(0);
+
+    const midRight = this.addEdge(boundaryRight, this.getPlanckSize(edgeWidthRight), Math.PI / 2);
+    this.boundaries.push(midRight);
+
+    this.boundaries.forEach((child) => this.board.addChild(child));
+  }
+
+  updateWorld() {
+    for (let i = 0; i < this.board.children.length; i++) {
+      const sprite = this.board.children[i];
+      const angle = sprite.body.m_angularVelocity;
+      if (sprite.name === 'circle') {
+        sprite.rotation = angle;
+      }
+      const pos = sprite.body.getPosition();
+      // const angle = sprite.body.rotation;
+      /*if (pos.x < -10 || pos.x > global.width + 10) {
+          group.removeChild(sprite);
+          boundaries.splice(boundaries.indexOf(sprite.body), 1);
+          i--;
+        } else*/
+      sprite.position.set(this.getPlanckSize(pos.x), this.getPlanckSize(pos.y));
+    }
   }
 }
+
+new Game();
