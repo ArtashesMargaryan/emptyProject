@@ -2,36 +2,53 @@ import { Sprite } from 'pixi.js';
 import Matter from './matter';
 
 export default class PhysicsSprite {
-  constructor(id, engine, category, x, y, width, height, texture, type = 'rectangle') {
+  constructor(
+    id,
+    engine,
+    category,
+    x,
+    y,
+    width,
+    height,
+    texture,
+    isStatic,
+    type = 'rectangle',
+    friction = 0,
+    gravity = 0
+  ) {
     this._id = id;
     this._engine = engine;
-    this.category = category;
+    this.category = '0x000';
 
     this.x = x;
     this.y = y;
+    this.isStatic = isStatic;
 
     this.width = width;
     this.height = height;
 
     this.texture = texture;
     this.type = type;
-
+    this.friction = friction;
+    this.gravity = gravity;
     this.createPhysics();
     this.createSprite();
-    console.warn('ds');
   }
 
   createPhysics() {
     let options = {
-      frictionAir: 0.58,
-      friction: 1,
+      positionImpulse: { x: 0, y: 0 },
+      constraintImpulse: { x: 0, y: -20, angle: 0 },
+      isStatic: this.isStatic,
+      frictionAir: 0,
+      friction: this.friction,
       inertia: Infinity,
-      isSensor: true,
+      isSensor: false,
       label: this._id,
       mass: 5,
-      restitution: 0,
+      restitution: 1,
       collisionFilter: {
-        mask: this.category,
+        category: 1,
       },
     };
 
@@ -41,7 +58,6 @@ export default class PhysicsSprite {
     } else {
       this._body = Matter.Bodies.rectangle(this.x, this.y, this.width, this.height, options);
     }
-    console.warn(this._body);
   }
 
   createSprite() {

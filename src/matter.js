@@ -1,6 +1,7 @@
 import * as MatterJs from 'matter-js';
 
 const Matter = {
+  Constraint: MatterJs.Constraint,
   Engine: MatterJs.Engine,
   Render: MatterJs.Render,
   Runner: MatterJs.Runner,

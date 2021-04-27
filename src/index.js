@@ -5,16 +5,76 @@ export class Game extends PIXI.Application {
   constructor() {
     super({ width: window.innerWidth, height: innerHeight, backgroundColor: '0xf11112f' });
     document.body.appendChild(this.view);
-
+    document.body.addEventListener('mousemove', this.buildAim.bind(this));
+    document.body.addEventListener('pointerdown', this.fire.bind(this));
     this.mouseConstraint = Matter.MouseConstraint;
     this.mouse = Matter.Mouse;
     this.init();
     this.runRender();
     // this.buildWord();
     this.build();
+
     this.ball;
   }
 
+  fire() {}
+
+  buildAim(e) {
+    let mouse;
+    if (this.world) {
+      mouse = { x: this.world.getBallPosition().x, y: this.world.getBallPosition().y };
+    }
+    let x, y;
+
+    if (e.clientX < 100) {
+      x = 100;
+    } else if (e.clientX > 2400) {
+      x = 2400;
+    } else {
+      x = e.clientX;
+    }
+
+    if (e.clientY < 100) {
+      y = 100;
+    } else if (e.clientY > 1400) {
+      y = 1400;
+    } else {
+      y = e.clientY;
+    }
+
+    if (!this.aim) {
+      const gr = new PIXI.Graphics();
+      gr.lineStyle(4, 0xffd900, 1);
+      gr.moveTo(mouse.x, mouse.y);
+
+      gr.lineTo(e.clientX, e.clientY);
+      gr.closePath();
+      gr.endFill();
+      gr.name = 'line';
+      this.stage.addChild((this.aim = gr));
+    } else {
+      const line = this.stage.children.find((child) => child.name && child.name === 'line');
+      line.destroy();
+      const gr = new PIXI.Graphics();
+      gr.lineStyle(4, 0xffd900, 1);
+      gr.moveTo(mouse.x, mouse.y);
+      gr.lineTo(x, y);
+      gr.closePath();
+      gr.endFill();
+      gr.name = 'line';
+
+      console.warn(this.alpha);
+      this.stage.addChild((this.aim = gr));
+      // this.stage.removeChildren(this.stage.children.length - 2, this.stage.children.length - 1);
+    }
+    if (Math.atan((y - mouse.y) / (x - mouse.x)) > 0) {
+      this.alpha = Math.atan((x - mouse.x) / (y - mouse.y));
+    } else {
+      Math.PI - Math.atan((x - mouse.x) / (y - mouse.y));
+    }
+
+    this.AA.rotation = this.alpha;
+  }
   init() {
     this.config = {
       world: {
@@ -87,37 +147,24 @@ export class Game extends PIXI.Application {
   }
 
   build() {
-    const world = new World(this.engine, this);
+    this.world = new World(this.engine, this);
+
+    const cont = new PIXI.Container();
+    const gr = new PIXI.Graphics();
+    gr.lineStyle(4, 0xffd900, 1);
+    gr.moveTo(500, 1000);
+
+    gr.lineTo(500, 500);
+    gr.closePath();
+    gr.endFill();
+    gr.rotation;
+    this.stage.addChild((this.AA = cont.addChild(gr)));
 
     // Matter.World.add(this.engine.world, world);
   }
 
   getRandom(min, max) {
     return Math.random() * (max - min) + min;
-  }
-
-  // circl(x, y, radius, color) {
-  //   return Matter.Bodies.circle(x, y, radius, {
-  //     isStatic: false,
-  //     restitution: 1,
-  //     render: { fillStyle: color },
-  //   });
-  // }
-
-  play() {
-    const mouse = Matter.Mouse.create(this.render.canvas),
-      mouseConstraint = Matter.MouseConstraint.create(this.engine, {
-        mouse: mouse,
-        constraint: {
-          stiffness: 0.2,
-          render: {
-            visible: false,
-          },
-        },
-      });
-
-    Matter.Composite.add(this.world, mouseConstraint);
-    this.render.mouse = mouse;
   }
 }
 
@@ -128,7 +175,6 @@ export class Game extends PIXI.Application {
 //   console.warn(this.circles[0]);
 //   setTimeout(() => {
 //     this.setCirecle();
-//     this.play();
 //   }, 2000);
 // }
 // wall(x, y, width, height) {
