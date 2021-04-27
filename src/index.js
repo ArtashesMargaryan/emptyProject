@@ -1,18 +1,16 @@
-import * as Matter from 'matter-js';
-
-export class Game {
+import * as PIXI from 'pixi.js';
+import Matter from './matter';
+import { World } from './world';
+export class Game extends PIXI.Application {
   constructor() {
-    this.view = document.createElement('div');
+    super({ width: window.innerWidth, height: innerHeight, backgroundColor: '0xf11112f' });
     document.body.appendChild(this.view);
-    this.view.style.backgroundColor = 'red';
-    this.view.setAttribute('id', 'board1');
-    this.view.style.width = 100;
-    this.view.style.height = 100;
+
     this.mouseConstraint = Matter.MouseConstraint;
     this.mouse = Matter.Mouse;
     this.init();
     this.runRender();
-    this.buildWord();
+    // this.buildWord();
     this.build();
     this.ball;
   }
@@ -58,17 +56,17 @@ export class Game {
       ],
     };
     this.engine = Matter.Engine.create(this.view);
-    this.world = this.engine.world;
+    // this.world = this.engine.world;
   }
 
   runRender() {
     this.render = Matter.Render.create({
-      element: document.body,
+      element: this.view,
       engine: this.engine,
 
       options: {
-        width: 2000,
-        height: 2000,
+        width: '100%',
+        height: '100%',
 
         wireframes: false, // need this or various render styles won't take
         background: 0xffffff,
@@ -83,84 +81,28 @@ export class Game {
     this.runner();
   }
 
-  addBB() {
-    const body = Matter.Bodies.polygon(150, 200, 5, 30);
-
-    const constraint = Matter.Constraint.create({
-      pointA: { x: 150, y: 100 },
-      bodyB: body,
-      pointB: { x: -10, y: -10 },
-    });
-
-    Matter.Composite.add(this.world, [body, constraint]);
-  }
-
   runner() {
     this.runner = Matter.Runner.create();
     Matter.Runner.run(this.runner, this.engine);
   }
 
-  wall(x, y, width, height) {
-    return Matter.Bodies.rectangle(x, y, width, height, {
-      isStatic: true,
-      render: { visible: true, color: '#f8f9fa' },
-    });
-  }
-
-  buildWord() {
-    Matter.Composite.add(this.engine.world, [
-      // boundaries (top, bottom, left, right)
-      this.wall(700, 120, 1000, 20),
-      this.wall(700, 620, 1000, 20),
-      this.wall(200, 370, 30, 520),
-      this.wall(1200, 370, 30, 520),
-      this.wall(700, 820, 1000, 20),
-      this.wall(700, 1220, 1000, 20),
-      this.wall(200, 1020, 30, 420),
-      this.wall(1200, 1020, 30, 420),
-    ]);
-
-    // bodies
-  }
-
   build() {
-    this.createCircle();
-    Matter.World.add(this.engine.world, this.circles);
-  }
+    const world = new World(this.engine, this);
 
-  createCircle() {
-    this.circles = [];
-    this.circles.push(this.circl(300, 200, 40, '#aaddaa'));
-    this.circles.push(this.circl(900, 1000, 40, '#44ddaa'));
-    console.warn(this.circles[0]);
-    setTimeout(() => {
-      this.setCirecle();
-      this.play();
-    }, 2000);
-  }
-
-  setCirecle() {
-    this.circles.forEach((circle) => {
-      Matter.Body.setStatic(circle, false);
-      Matter.Body.setVelocity(circle, {
-        x: this.getRandom(-4, 4),
-        y: this.getRandom(-6, -4),
-      });
-      Matter.Body.setAngularVelocity(circle, this.getRandom(-0.05, 0.05));
-    });
+    // Matter.World.add(this.engine.world, world);
   }
 
   getRandom(min, max) {
     return Math.random() * (max - min) + min;
   }
 
-  circl(x, y, radius, color) {
-    return Matter.Bodies.circle(x, y, radius, {
-      isStatic: false,
-      restitution: 1,
-      render: { fillStyle: color },
-    });
-  }
+  // circl(x, y, radius, color) {
+  //   return Matter.Bodies.circle(x, y, radius, {
+  //     isStatic: false,
+  //     restitution: 1,
+  //     render: { fillStyle: color },
+  //   });
+  // }
 
   play() {
     const mouse = Matter.Mouse.create(this.render.canvas),
@@ -178,6 +120,49 @@ export class Game {
     this.render.mouse = mouse;
   }
 }
+
+// createCircle() {
+//   this.circles = [];
+//   this.circles.push(this.circl(300, 200, 40, '#aaddaa'));
+//   this.circles.push(this.circl(900, 1000, 40, '#44ddaa'));
+//   console.warn(this.circles[0]);
+//   setTimeout(() => {
+//     this.setCirecle();
+//     this.play();
+//   }, 2000);
+// }
+// wall(x, y, width, height) {
+//   return Matter.Bodies.rectangle(x, y, width, height, {
+//     isStatic: true,
+//     render: { visible: true, color: '#f8f9fa' },
+//   });
+// }
+
+// buildWord() {
+//   Matter.Composite.add(this.engine.world, [
+//     // boundaries (top, bottom, left, right)
+//     this.wall(700, 120, 1000, 20),
+//     this.wall(700, 620, 1000, 20),
+//     this.wall(200, 370, 30, 520),
+//     this.wall(1200, 370, 30, 520),
+//     this.wall(700, 820, 1000, 20),
+//     this.wall(700, 1220, 1000, 20),
+//     this.wall(200, 1020, 30, 420),
+//     this.wall(1200, 1020, 30, 420),
+//   ]);
+
+// bodies
+// }
+// setCirecle() {
+//   this.circles.forEach((circle) => {
+//     Matter.Body.setStatic(circle, false);
+//     Matter.Body.setVelocity(circle, {
+//       x: this.getRandom(-4, 4),
+//       y: this.getRandom(-6, -4),
+//     });
+//     Matter.Body.setAngularVelocity(circle, this.getRandom(-0.05, 0.05));
+//   });
+// }
 
 // (() => {
 //   const MouseConstraint = Matter.MouseConstraint;
