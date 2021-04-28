@@ -31,6 +31,7 @@
   "dependencies": {
     "@armathai/pixi-grid": "^3.0.5",
     "@pixi/tilemap": "^3.1.0",
+    "event-e3": "^8.1.0",
     "eventemitter3": "^4.0.7",
     "file-loader": "^6.2.0",
     "gsap": "^3.5.1",
