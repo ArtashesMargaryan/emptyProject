@@ -10,18 +10,50 @@ export function coefficient(pointA, pointB, maxVal) {
 //   const x2 = (height - pointB.y) / -angleK + pointB.x;
 //   return { x: x2, y: height };
 // }
+let angleK;
 
-export function getNextPointer(pointA, pointB, height) {
-  const angleK = (pointA.y - pointB.y) / (pointA.x - pointB.x);
-  const x2 = ((pointA.x - pointB.x) * (pointA.y - height)) / (pointB.y - pointA.y) + pointA.x;
-  if (x2 < 40) {
-    const y2 = angleK * (pointA.x - 40) + pointA.y;
-    const x3 = (40 - y2) / angleK + 40;
-    return { x: 40, y: y2 };
-
-    // { x: x3, y: 40 },
-  } else if (x2 > 1560) {
+export function getNextPointer(pointA, pointB) {
+  angleK = (pointA.y - pointB.y) / (pointA.x - pointB.x);
+  if (angleK === Infinity) {
+    return { x: pointA.x, y: 40 };
+  }
+  let x = 40,
+    y;
+  y = Math.round(angleK * (x - pointA.x) + pointA.y);
+  if (y >= 40 && y <= 1100) {
+    return { x: x, y: y };
   } else {
-    return { x: x2, y: height };
+    y = 40;
+    x = Math.round((y - pointA.y) / angleK + pointA.x);
+    if (x > 40 && x < 1560) {
+      return { x: x, y: y };
+    } else {
+      x = 1560;
+      y = Math.round(angleK * (x - pointA.x) + pointA.y);
+      if (y >= 40 && y <= 1100) {
+        return { x: x, y: y };
+      }
+    }
+  }
+}
+
+export function getEndPointer(pointA) {
+  let x = 40,
+    y;
+
+  y = 40;
+  x = Math.round((y - pointA.y) / -angleK + pointA.x);
+  if (x > 40 && x < 1560) {
+    return { x: x, y: y };
+  } else {
+    if (pointA.x > 1000) {
+      x = 40;
+    } else {
+      x = 1560;
+    }
+    y = Math.round(-angleK * (x - pointA.x) + pointA.y);
+    if (y >= 100 && y <= 1100) {
+      return { x: x, y: y };
+    }
   }
 }

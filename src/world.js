@@ -1,13 +1,8 @@
-import Emitter from 'event-e3';
 import { Texture } from 'pixi.js';
 import Matter from './matter';
 import PhysicsSprite from './sprite-matter';
 import { coefficient } from './utils';
-const emitt = new Emitter();
 
-function emitter() {
-  return emitt;
-}
 export class World {
   constructor(engine, app) {
     this._engine = engine;
@@ -15,7 +10,7 @@ export class World {
       width: 1600,
       height: 1200,
     };
-    this.ball = { x: this.config.width / 2, y: this.config.height - 80 };
+    this.ball = { x: this.config.width / 2 - 400, y: this.config.height - 65 };
     this.app = app;
     this._engine.gravity.y = 1;
     this.buildBall('ball1');
@@ -25,6 +20,7 @@ export class World {
 
   update() {
     !!this.player && this.player.update();
+    // !!this.player && this.player.static(false) && this.player.update();
   }
 
   buildBall(id) {
@@ -51,67 +47,66 @@ export class World {
   }
 
   buildBoarder() {
-    const bottom = new Texture.from('../assets/wall.png');
+    const config = [
+      {
+        id: 'bottom',
+        engine: this._engine,
+        category: 0x001,
+        x: 800,
+        y: 1180,
+        width: 1600,
+        height: 40,
+        texture: new Texture.from('../assets/bottom.png'),
+
+        type: 'rec',
+      },
+      {
+        id: 'top',
+        engine: this._engine,
+        category: 0x001,
+        x: 800,
+        y: -10,
+        width: 1600,
+        height: 40,
+        texture: new Texture.from('../assets/bottom.png'),
+
+        type: 'rec',
+      },
+      {
+        id: 'right',
+        engine: this._engine,
+        category: 0x001,
+        x: 1580,
+        y: 580,
+        width: 40,
+        height: 1200,
+        texture: new Texture.from('../assets/left.png'),
+
+        type: 'rec',
+      },
+      {
+        id: 'left',
+        engine: this._engine,
+        category: 0x001,
+        x: 0,
+        y: 580,
+        width: 40,
+        height: 1200,
+        texture: new Texture.from('../assets/left.png'),
+
+        type: 'rec',
+      },
+    ];
+    const left = new Texture.from('../assets/left.png');
+    const bottom = new Texture.from('../assets/bottom.png');
     this.bottomBoarder = [];
-    for (let i = 1; i < 41; i++) {
-      const spriteB = new PhysicsSprite({
-        id: 'bottom' + i,
-        engine: this._engine,
-        category: 0x001,
-        x: 40 * i - 20,
-        y: this.config.height - 20,
-        width: 40,
-        height: 40,
-        texture: bottom,
+    config.forEach((sprite, index) => {
+      const spriteL = new PhysicsSprite(sprite);
 
-        type: 'rec',
-      });
-      const spriteT = new PhysicsSprite({
-        id: 'bottom' + i + '-' + i,
-        engine: this._engine,
-        category: 0x001,
-        x: 40 * i - 20,
-        y: 20,
-        width: 40,
-        height: 40,
-        texture: bottom,
+      this.app.stage.addChild(spriteL.sprite);
+      this.bottomBoarder.push(spriteL.body);
+    });
 
-        type: 'rec',
-      });
-      this.app.stage.addChild(spriteB.sprite);
-      this.bottomBoarder.push(spriteB.body);
-      this.app.stage.addChild(spriteT.sprite);
-      this.bottomBoarder.push(spriteT.body);
-    }
-    for (let i = 1; i < 30; i++) {
-      const spriteB = new PhysicsSprite({
-        id: 'bottom' + i + '_' + i,
-        engine: this._engine,
-        category: 0x001,
-        x: 20,
-        y: 40 * i - 20,
-        width: 40,
-        height: 40,
-        texture: bottom,
-
-        type: 'rec',
-      });
-      const spriteT = new PhysicsSprite({
-        id: 'bottom' + i + '_' + i,
-        engine: this._engine,
-        category: 0x001,
-        x: this.config.width - 20,
-        y: 40 * i - 20,
-        width: 40,
-        height: 40,
-        texture: bottom,
-        type: 'rec',
-      });
-      this.app.stage.addChild(spriteB.sprite);
-      this.bottomBoarder.push(spriteB.body);
-      this.app.stage.addChild(spriteT.sprite);
-      this.bottomBoarder.push(spriteT.body);
-    }
     Matter.World.add(this._engine.world, this.bottomBoarder);
   }
 
@@ -121,35 +116,23 @@ export class World {
 
   stroke(pointA, maxCoefficient) {
     this.player.body.density = 0.001;
+    this.player.body.angle = 0;
+    this.player.body.speed = 0;
+
     this.ball.x = this.player.body.position.x;
     this.ball.y = this.player.body.position.y;
     const coeff = coefficient(pointA, { x: this.ball.x, y: this.ball.y }, maxCoefficient);
-    // console.warn(pointA, { x: this.ball.x, y: this.ball.y }, maxCoefficient);
-    console.warn(coeff);
-    // this.player.body.velocity.x = coeff.x;
-    // this.player.body.velocity.y = coeff.y;
-
+    console.warn(this.player.body);
+    this.player.body.isStatic = false;
     this.player.body.force.y = coeff.y;
     this.player.body.force.x = coeff.x;
-    // torque: 0,
-    // positionImpulse: { x: 0, y: 0 },
-    // constraintImpulse: { x: 0, y: 0, angle: 0 },
-    // totalContacts: 0,
-    // speed: 0,
-    // angularSpeed: 0,
-    // velocity: { x: 0, y: 0 },
-    // angularVelocity: 0,
-    // isSensor: false,
-    // isStatic: false,
-    // isSleeping: false,
-    // motion: 0,
-    // sleepThreshold: 60,
-    // density: 0.001,
-    // restitution: 0,
-    // friction: 0.1,
-    // frictionStatic: 0.5,
-    // frictionAir: 0.01,
   }
 
-  ballStope() {}
+  ballRebuild() {
+    !!this.player && this.player.destroy();
+  }
+
+  getBall() {
+    return this.player;
+  }
 }

@@ -1,8 +1,10 @@
 import { Sprite } from 'pixi.js';
+import emitter from './emitter';
 import Matter from './matter';
 
 export default class PhysicsSprite {
   constructor(config) {
+    this.touchDown = false;
     const {
       id,
       engine,
@@ -62,16 +64,34 @@ export default class PhysicsSprite {
     this._sprite.y = this.y;
   }
 
+  static() {
+    this._body.isStatic = false;
+  }
+
   update() {
     if (this._body) {
+      if (Math.abs(this._body.velocity.y) > 50) {
+        this._body.velocity.y = (this._body.velocity.y / Math.abs(this._body.velocity.y)) * 50;
+      }
+      if (this._body.position.y >= 1120 && this.touchDown) {
+        this._body.isStatic = true;
+        this._body.force.y = 0;
+        this._body.force.x = 0;
+        emitter.emit('finish');
+        this.touchDown = false;
+      }
       this._sprite.x = this._body.position.x;
       this._sprite.y = this._body.position.y;
+      if (this._body.position.y < 1120) {
+        this.touchDown = true;
+      }
       this._sprite.rotation = this._body.angle;
     }
   }
 
   destroy() {
     Matter.World.remove(this._engine.world, this._body);
+    this._sprite.destroy();
   }
 
   get body() {

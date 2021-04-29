@@ -14,6 +14,7 @@
   "devDependencies": {
     "@babel/cli": "^7.8.4",
     "@babel/core": "^7.9.0",
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
     "@babel/preset-env": "^7.9.5",
     "babel-loader": "^8.1.0",
     "clean-webpack-plugin": "^3.0.0",
@@ -30,6 +31,7 @@
   },
   "dependencies": {
     "@armathai/pixi-grid": "^3.0.5",
+    "@babel/preset-react": "^7.13.13",
     "@pixi/tilemap": "^3.1.0",
     "event-e3": "^8.1.0",
     "eventemitter3": "^4.0.7",
