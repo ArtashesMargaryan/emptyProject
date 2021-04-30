@@ -12,16 +12,36 @@ export class Game extends PIXI.Application {
     this.mouseConstraint = Matter.MouseConstraint;
     this.mouse = Matter.Mouse;
     this.pointer;
+    this.boardSize = {
+      row: 30,
+      col: 40,
+      size: 40,
+    };
     this.eventIs = true;
     this.init();
     this.runRender();
     // this.buildWord();
     this.build();
-    emitter.on('finish', () => {
+    emitter.on('newStep', () => {
       this.addListenerBody();
     });
-
+    this.board = [];
+    this.buildBoard();
     this.angularF;
+  }
+
+  buildBoard() {
+    for (let i = 0; i < this.boardSize.col; i++) {
+      this.board[i] = [];
+      const arr = [];
+      for (let j = 0; j < this.boardSize.col; j++) {
+        arr.push({ i: i, j: j });
+      }
+      this.board[i].push([...arr]);
+      arr.length = 0;
+    }
+
+    console.warn(this.board);
   }
 
   addListenerBody() {

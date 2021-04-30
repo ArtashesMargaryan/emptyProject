@@ -20,6 +20,7 @@ export default class PhysicsSprite {
       density = 0.005,
     } = config;
     this._id = id;
+    this.config = config;
     this._engine = engine;
     this.category = '0x000';
     this.density = density;
@@ -49,11 +50,11 @@ export default class PhysicsSprite {
     };
 
     if (this.type === 'circle') {
-      console.warn(Matter);
       this._body = Matter.Bodies.circle(this.x, this.y, this.width, options);
     } else {
       this._body = Matter.Bodies.rectangle(this.x, this.y, this.width, this.height, options);
     }
+    return this._body;
   }
 
   createSprite() {
@@ -69,7 +70,7 @@ export default class PhysicsSprite {
   }
 
   update() {
-    if (this._body) {
+    if (!!this._body) {
       if (Math.abs(this._body.velocity.y) > 50) {
         this._body.velocity.y = (this._body.velocity.y / Math.abs(this._body.velocity.y)) * 50;
       }
@@ -77,8 +78,9 @@ export default class PhysicsSprite {
         this._body.isStatic = true;
         this._body.force.y = 0;
         this._body.force.x = 0;
-        emitter.emit('finish');
+        emitter.emit('newStep');
         this.touchDown = false;
+        return;
       }
       this._sprite.x = this._body.position.x;
       this._sprite.y = this._body.position.y;
@@ -91,7 +93,11 @@ export default class PhysicsSprite {
 
   destroy() {
     Matter.World.remove(this._engine.world, this._body);
+    this._body = null;
+
     this._sprite.destroy();
+    this._sprite = null;
+    // this._sprite.destroy();
   }
 
   get body() {
@@ -116,5 +122,9 @@ export default class PhysicsSprite {
 
   set id(id) {
     this._id = id;
+  }
+
+  get positionObj() {
+    return this._body.position;
   }
 }
