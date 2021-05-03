@@ -61,7 +61,6 @@ export class Game extends PIXI.Application {
   }
 
   fire = (e) => {
-    console.warn('a');
     this.eventIs = !this.eventIs;
     this.clearLine();
     this.world.stroke({ x: Math.round(e.clientX), y: Math.round(e.clientY) }, this.config.maxCoefficient);

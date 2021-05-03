@@ -1,5 +1,5 @@
-import * as PIXI from 'pixi.js';
 import { Texture } from 'pixi.js';
+import BoxContainer from './box-sprite-matter';
 import Matter from './matter';
 import PhysicsSprite from './sprite-matter';
 import { coefficient } from './utils';
@@ -11,12 +11,14 @@ export class World {
       width: 1600,
       height: 1200,
     };
-
+    this.boxNum = { i: 0, j: 0 };
     this.ball = { x: this.config.width / 2 - 400, y: this.config.height - 65 };
+    this.boxes = [];
     this.app = app;
     this._engine.gravity.y = 1;
     this.buildBall('ball1');
     this.buildBoarder();
+    this.buildBox({ power: this.buildBoxPower(), i: this.boxNum.i, j: this.boxNum.j, color: '0x11aa11' });
     this.app.ticker.add(this.update, this);
   }
 
@@ -71,7 +73,7 @@ export class World {
         engine: this._engine,
         category: 0x001,
         x: 800,
-        y: -10,
+        y: 0,
         width: 1600,
         height: 40,
         texture: new Texture.from('../assets/bottom.png'),
@@ -94,7 +96,7 @@ export class World {
         id: 'left',
         engine: this._engine,
         category: 0x001,
-        x: 0,
+        x: 19,
         y: 580,
         width: 40,
         height: 1200,
@@ -103,8 +105,7 @@ export class World {
         type: 'rec',
       },
     ];
-    const left = new Texture.from('../assets/left.png');
-    const bottom = new Texture.from('../assets/bottom.png');
+
     this.bottomBoarder = [];
     config.forEach((sprite, index) => {
       const spriteL = new PhysicsSprite(sprite);
@@ -135,46 +136,74 @@ export class World {
 
   ballRebuild() {
     if (!!this.player) {
-      // this.player.body.force.y = -this.player.body.force.y;
-      // this.player.body.force.x = -this.player.body.force.x;
-      console.warn(this.app.stage.children.filter((child) => child['name'] == 'ball'));
       const ball = this.app.stage.children.filter((child) => child['name'] == 'ball');
 
       const position = this.player.positionObj;
       this.player.destroy();
       this.ball.x = position.x;
       this.ball.y = position.y;
-      // this.app.stage.removeChild(this.app.stage.children.filter((child) => child['name'] == 'ball'));
       this.buildBall();
-      console.warn(position);
-      this.buildBox({ power: 5, i: 5, j: 5, color: '0x11aa11' });
+      this.updateBoard();
     }
   }
 
   buildBox(config) {
-    const { power, i, j, color } = config;
-    const container = new PIXI.Container();
-    const gr = new PIXI.Graphics();
-    gr.beginFill(color);
-    gr.drawRect(0, 0, 40, 40);
-    gr.endFill();
-    container.id = `${i}-${j}`;
-    container.addChild(gr);
-    gr.addChild(new PIXI.Text(power));
-    // this._body = Matter.Bodies.rectangle(this.x, this.y, this.width, this.height, options);
-    const body = Matter.Bodies.rectangle(container.position.x, container.position.y, 40, 40, {
-      id: container.id,
-      isStatic: true,
-    });
-    container.body = body;
-    console.warn(body);
-    Matter.World.add(this._engine.world, body);
+    const box = new BoxContainer(config, this.app);
 
-    container.position.set(i * 40, j * 40);
-    this.app.stage.addChild(container);
+    this.boxes.push(box);
+    this.app.stage.addChild(box);
+    Matter.World.add(this._engine.world, box.body);
+    console.warn(this._engine.world);
+    Matter.Events.on(this._engine.world, 'collisionStart', (e) => {
+      console.warn(e);
+    });
+    this.nextRow();
   }
 
   getBall() {
     return this.player;
+  }
+
+  updateBoard() {
+    if (this.boxes.length > 0) {
+      this.boxes.forEach((box) => {
+        box.moving();
+      });
+    }
+    console.warn(1);
+    // } else {
+    this.buildBox({ power: this.buildBoxPower(), i: this.boxNum.i, j: this.boxNum.j, color: '0x11aa11' });
+  }
+
+  buildBoxPower() {
+    return Math.min(this.boxNum.i, this.boxNum.j) + 1;
+  }
+
+  nextRow() {
+    if (this.boxNum.i == 18) {
+      this.boxNum.j++;
+      this.boxNum.i == 0;
+    } else {
+      this.boxNum.i++;
+    }
+  }
+
+  buildRectBody(x, y, w, h, i, j) {
+    const body = Matter.Bodies.rectangle(x, y, w, h, {
+      id: `${i}-${j}`,
+      isStatic: true,
+      frictionAir: 0,
+      friction: 0,
+      restitution: 1,
+      render: {
+        visible: true,
+        fillStyle: '#fff',
+      },
+    });
+    return body;
+  }
+
+  updatePosition(body) {
+    console.warn(body);
   }
 }
