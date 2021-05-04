@@ -51,9 +51,20 @@ export default class PhysicsSprite {
 
     if (this.type === 'circle') {
       this._body = Matter.Bodies.circle(this.x, this.y, this.width, options);
+      this._body.typeName = 'ball';
+      this._body.collisionFilter = {
+        mask: 1,
+        category: 1,
+      };
     } else {
       this._body = Matter.Bodies.rectangle(this.x, this.y, this.width, this.height, options);
+
+      // this._body.collisionFilter = {
+      //   mask: 2,
+      //   category: 1,
+      // };
     }
+
     return this._body;
   }
 
@@ -89,6 +100,12 @@ export default class PhysicsSprite {
       }
       this._sprite.rotation = this._body.angle;
     }
+  }
+
+  updateBody() {
+    Matter.World.remove(this._engine.world, this._body);
+    this._body = null;
+    this.createPhysics();
   }
 
   destroy() {

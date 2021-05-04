@@ -1,5 +1,6 @@
 import { Texture } from 'pixi.js';
 import BoxContainer from './box-sprite-matter';
+import emitter from './emitter';
 import Matter from './matter';
 import PhysicsSprite from './sprite-matter';
 import { coefficient } from './utils';
@@ -15,43 +16,52 @@ export class World {
     this.ball = { x: this.config.width / 2 - 400, y: this.config.height - 65 };
     this.boxes = [];
     this.app = app;
+    this.balls = [];
+    this.ballCount = 2;
     this._engine.gravity.y = 1;
-    this.buildBall('ball1');
+    this.buildBalls('ball1');
     this.buildBoarder();
-    this.buildBox({ power: this.buildBoxPower(), i: this.boxNum.i, j: this.boxNum.j, color: '0x11aa11' });
     this.app.ticker.add(this.update, this);
   }
 
   update() {
-    !!this.player && this.player.update();
+    if (!!this.balls && this.balls.length > 0) {
+      this.balls.forEach((ball) => {
+        ball.update();
+      });
+    }
 
-    // !!this.player && this.player.static(false) && this.player.update();
+    // !!this.players && this.players.static(false) && this.players.update();
   }
 
   worldUpdate(matrix) {}
 
-  buildBall(id = '1') {
+  buildBalls() {
     let playerTexture = new Texture.from('../assets/ball.png');
-    this.player = new PhysicsSprite({
-      id: id,
-      density: 0.001,
-      isStatic: false,
-      engine: this._engine,
-      category: 0x001,
-      x: this.ball.x,
-      y: this.ball.y,
-      width: 40,
-      height: 40,
-      texture: playerTexture,
+    this.balls = [];
+    for (let i = 0; i < 10; i++) {
+      this.balls.push(
+        new PhysicsSprite({
+          density: 0.001,
+          isStatic: false,
+          engine: this._engine,
+          category: 0x001,
+          x: this.ball.x,
+          y: this.ball.y,
+          width: 30,
+          height: 30,
+          texture: playerTexture,
+          type: 'circle',
+        })
+      );
+    }
+    this.balls.forEach((ball) => {
+      Matter.World.add(this._engine.world, ball.body);
 
-      type: 'circle',
+      this._engine.world.gravity.y = 0;
+      ball.sprite.name = 'ball';
+      this.app.stage.addChild(ball.sprite);
     });
-
-    Matter.World.add(this._engine.world, this.player.body);
-
-    this._engine.world.gravity.y = 0;
-    this.player.sprite.name = 'ball';
-    this.app.stage.addChild(this.player.sprite);
   }
 
   buildBoarder() {
@@ -118,32 +128,50 @@ export class World {
   }
 
   getBallPosition() {
-    return { x: this.player.sprite.position.x, y: this.player.sprite.position.y };
+    return { x: this.balls[0].sprite.position.x, y: this.balls[0].sprite.position.y };
   }
 
   stroke(pointA, maxCoefficient) {
-    this.player.body.density = 0.001;
-    this.player.body.angle = 0;
-    this.player.body.speed = 0;
+    let i = 0;
+    const int = setInterval(() => {
+      if (!this.balls[i]) {
+        clearInterval(int);
+        return;
+      }
+      this.balls[i].body.density = 0.001;
+      this.balls[i].body.angle = 0;
+      this.balls[i].body.speed = 0;
 
-    this.ball.x = this.player.body.position.x;
-    this.ball.y = this.player.body.position.y;
-    const coeff = coefficient(pointA, { x: this.ball.x, y: this.ball.y }, maxCoefficient);
-    this.player.body.isStatic = false;
-    this.player.body.force.y = coeff.y;
-    this.player.body.force.x = coeff.x;
+      this.ball.x = this.balls[i].body.position.x;
+      this.ball.y = this.balls[i].body.position.y;
+      const coeff = coefficient(pointA, { x: this.ball.x, y: this.ball.y }, maxCoefficient);
+      this.balls[i].body.isStatic = false;
+      this.balls[i].body.force.y = coeff.y;
+      this.balls[i].body.force.x = coeff.x;
+      i++;
+      if (int === this.ballCount) {
+        clearInterval(int);
+        return;
+      }
+    }, 60);
   }
 
   ballRebuild() {
-    if (!!this.player) {
-      const ball = this.app.stage.children.filter((child) => child['name'] == 'ball');
-
-      const position = this.player.positionObj;
-      this.player.destroy();
+    if (!!this.balls) {
+      // const ball = this.app.stage.children.filter((child) => child['name'] == 'ball');
+      const position = this.balls[0].positionObj;
       this.ball.x = position.x;
       this.ball.y = position.y;
-      this.buildBall();
+      const ball = [];
+      this.balls.forEach((ball) => {
+        // bal const position = this.player.positionObj;
+        ball.destroy();
+      });
+      this.buildBalls();
       this.updateBoard();
+
+      // this.buildBalls();
+      // this.updateBoard();
     }
   }
 
@@ -153,7 +181,6 @@ export class World {
     this.boxes.push(box);
     this.app.stage.addChild(box);
     Matter.World.add(this._engine.world, box.body);
-    console.warn(this._engine.world);
     Matter.Events.on(this._engine.world, 'collisionStart', (e) => {
       console.warn(e);
     });
@@ -161,7 +188,15 @@ export class World {
   }
 
   getBall() {
-    return this.player;
+    return this.balls;
+  }
+
+  boxUpdate(id) {
+    this.boxes.forEach((box) => {
+      if (box.body.id == id) {
+        box.updatePower(this._engine.world);
+      }
+    });
   }
 
   updateBoard() {
@@ -170,9 +205,8 @@ export class World {
         box.moving();
       });
     }
-    console.warn(1);
     // } else {
-    this.buildBox({ power: this.buildBoxPower(), i: this.boxNum.i, j: this.boxNum.j, color: '0x11aa11' });
+    emitter.emit('updateBoard');
   }
 
   buildBoxPower() {

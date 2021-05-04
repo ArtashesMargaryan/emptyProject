@@ -9,39 +9,52 @@ export class Game extends PIXI.Application {
     super({ width: window.innerWidth, height: innerHeight, backgroundColor: '0xf11112f' });
     document.body.appendChild(this.view);
     this.addListenerBody();
+    this.ticker.maxFPS = 60;
     this.mouseConstraint = Matter.MouseConstraint;
     this.mouse = Matter.Mouse;
     this.pointer;
     this.boardSize = {
-      row: 30,
-      col: 40,
+      row: 13,
+      col: 18,
       size: 40,
     };
+    this.board = [];
+    this.emptyCells = [];
+    this.power = 1;
+    this.level = 1;
     this.eventIs = true;
     this.init();
+    this.buildBoard();
     this.runRender();
     // this.buildWord();
     this.build();
+    let a = 0;
     emitter.on('newStep', () => {
-      this.addListenerBody();
+      if (a == 9) {
+        a = 0;
+        this.addListenerBody();
+      } else {
+        a++;
+      }
     });
-    this.board = [];
-    this.buildBoard();
-    this.angularF;
+
+    emitter.on('updateEmptyCell', (cell) => {
+      this.emptyCells.push(cell);
+    });
+    emitter.on('updateBoard', () => {
+      this.level++;
+      this.power = 1; // (this.level % 5) + (this.level - (this.level % 5));
+      this.updateBoard();
+    });
   }
 
   buildBoard() {
     for (let i = 0; i < this.boardSize.col; i++) {
-      this.board[i] = [];
-      const arr = [];
-      for (let j = 0; j < this.boardSize.col; j++) {
-        arr.push({ i: i, j: j });
+      for (let j = 0; j < this.boardSize.row; j++) {
+        this.board.push({ i: i, j: j });
       }
-      this.board[i].push([...arr]);
-      arr.length = 0;
     }
-
-    console.warn(this.board);
+    this.emptyCells = [...this.board];
   }
 
   addListenerBody() {
@@ -92,7 +105,19 @@ export class Game extends PIXI.Application {
       maxCoefficient: 0.5,
     };
     this.engine = Matter.Engine.create(this.view);
+    // an example of using collisionStart event on an engine
+    Matter.Events.on(this.engine, 'collisionStart', (event) => {
+      this.detect(event.pairs[0]);
+    });
     // this.world = this.engine.world;
+  }
+
+  detect(obj) {
+    if (obj.bodyB.typeName == 'box') {
+      this.world.boxUpdate(obj.bodyB.id);
+    } else if (obj.bodyA.typeName == 'box') {
+      this.world.boxUpdate(obj.bodyA.id);
+    }
   }
 
   runRender() {
@@ -161,12 +186,32 @@ export class Game extends PIXI.Application {
 
   build() {
     this.world = new World(this.engine, this);
-
     // Matter.World.add(this.engine.world, world);
+    this.updateBoard();
+  }
+
+  updateBoard() {
+    let arr;
+    do {
+      arr = this.getRandomCell();
+    } while (!arr);
+    arr.forEach((cell) => {
+      this.world.buildBox({ i: cell.i, power: this.power });
+    });
   }
 
   getRandom(min, max) {
     return Math.random() * (max - min) + min;
+  }
+
+  getRandomCell() {
+    const arr = [];
+    for (let i = 0; i < this.level; i++) {
+      const num = Math.round(Math.random() * this.emptyCells.length);
+      arr.push(this.emptyCells[num]);
+      this.emptyCells.splice(num, 1);
+    }
+    return arr;
   }
 }
 

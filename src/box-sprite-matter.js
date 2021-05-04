@@ -1,4 +1,5 @@
 import { Container, Sprite, Text, Texture } from 'pixi.js';
+import emitter from './emitter';
 import Matter from './matter';
 
 export default class BoxContainer extends Container {
@@ -28,8 +29,7 @@ export default class BoxContainer extends Container {
   moving() {
     this.prevPosition = this.body.position.y + 80;
     if (this.body.isStatic) {
-      this.body.isStatic = false;
-      this.body.position.y += 8;
+      Matter.Body.setPosition(this.body, { x: this.body.position.x, y: this.body.position.y + 80 });
       // this.body.isStatic = true;
     }
   }
@@ -46,7 +46,14 @@ export default class BoxContainer extends Container {
         fillStyle: '#fff',
       },
     });
+    body.typeName = 'box';
+    body.i = i;
+    body.j = j;
     this.body = body;
+    // this.body.collisionFilter = {
+    //   mask: 1,
+    //   category: 1,
+    // };
     // Matter.World.add(this._engine.world, body);
   }
 
@@ -62,6 +69,25 @@ export default class BoxContainer extends Container {
     this.sprite.addChild(newText);
     // text.x = -25;
     // text.y = -30;
+  }
+
+  updatePower(engine) {
+    const text = Number(this.sprite.children[0].text);
+    if (text == 1) {
+      const { i, j } = this.body;
+      Matter.World.remove;
+      Matter.World.remove(engine, this.body);
+
+      emitter.emit('updateEmptyCell', { i: i, j: j });
+      this.destroy();
+    } else {
+      this.sprite.children[0].text = `${text - 1}`;
+
+      // this.sprite.children[0].destroy();
+      // this.sprite.children[0] = null;
+      // this.sprite.children[0].text = text - 1;
+      // console.warn(text);
+    }
   }
 
   updatePosition() {
